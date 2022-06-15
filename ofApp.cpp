@@ -1,101 +1,72 @@
-#include "ofApp.h"
+#include "ofApp.h"	
 
 //--------------------------------------------------------------
 void ofApp::setup() {
 
 	ofSetFrameRate(60);
-	ofSetWindowTitle("openframeworks");
+	ofSetWindowTitle("openFrameworks");
 
-	ofBackground(255);
-	ofSetLineWidth(2);
+	ofBackground(0);
+	ofSetLineWidth(1);
+	ofEnableDepthTest();
 }
 
 //--------------------------------------------------------------
 void ofApp::update() {
 
-	ofSeedRandom(39);
 }
 
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	ofColor color;
-	vector<ofColor> color_list;
-	vector<int> hex_list = { 0xef476f, 0xffd166, 0x06d6a0, 0x118ab2, 0x073b4c };
-	for (auto hex : hex_list) {
+	this->cam.begin();
 
-		color.setHex(hex);
-		color_list.push_back(color);
-	}
+	int u = ofGetFrameNum() * 3;
+	for (int v = 0; v < 360; v += 3) {
 
-	ofTranslate(ofGetWidth() * 0.5, ofGetHeight() * 0.5);
+		auto noise_location = this->make_point(300, 40, u, v);
+		auto r = ofMap(ofNoise(glm::vec4(noise_location * 0.03, ofGetFrameNum() * .005)), 0, 1, 0, 120);
 
-	auto noise_seed = glm::vec2(ofRandom(1000), ofRandom(1000));
-	for (int k = 0; k < 24; k++) {
+		vector<glm::vec3> vertices;
 
-		ofMesh mesh;
-		vector<glm::vec3> right, left, frame;
+		vertices.push_back(this->make_point(300, r, u, v - 1));
+		vertices.push_back(this->make_point(300, r, u, v + 1));
+		vertices.push_back(this->make_point(300, r, u + 180, v + 1));
+		vertices.push_back(this->make_point(300, r, u + 180, v - 1));
 
-		glm::vec3 last_location;
-		float last_theta;
-
-		for (int i = 0; i < 28; i++) {
-
-			auto radius = ofMap(ofNoise((ofGetFrameNum() + i + k * 30) * 0.02), 0, 1 , 200 , 380);
-			auto next_radius = ofMap(ofNoise((ofGetFrameNum() + i + 1 + k * 30) * 0.02), 0, 1, 200, 380);
-
-			auto location = glm::vec3(radius * cos((ofGetFrameNum() + i + k * 30) * DEG_TO_RAD), radius * sin((ofGetFrameNum() + i + k * 30) * DEG_TO_RAD), 0);
-			auto next = glm::vec3(next_radius * cos((ofGetFrameNum() + i + 1 + k * 30) * DEG_TO_RAD), next_radius * sin((ofGetFrameNum() + i + 1 + k * 30) * DEG_TO_RAD), 0);
-
-			auto direction = next - location;
-			auto theta = atan2(direction.y, direction.x);
-
-			right.push_back(location + glm::vec3(ofMap(i, 0, 25, 0, 8) * cos(theta + PI * 0.5), ofMap(i, 0, 25, 0, 8) * sin(theta + PI * 0.5), 0));
-			left.push_back(location + glm::vec3(ofMap(i, 0, 25, 0, 8) * cos(theta - PI * 0.5), ofMap(i, 0, 25, 0, 8) * sin(theta - PI * 0.5), 0));
-
-			last_location = location;
-			last_theta = theta;
-		}
-
-		for (int i = 0; i < right.size(); i++) {
-
-			mesh.addVertex(left[i]);
-			mesh.addVertex(right[i]);
-		}
-
-
-		for (int i = 0; i < mesh.getNumVertices() - 2; i += 2) {
-
-			mesh.addIndex(i + 0); mesh.addIndex(i + 1); mesh.addIndex(i + 3);
-			mesh.addIndex(i + 0); mesh.addIndex(i + 2); mesh.addIndex(i + 3);
-		}
-
-		mesh.addVertex(last_location);
-		int index = mesh.getNumVertices();
-		for (auto theta = last_theta - PI * 0.5; theta <= last_theta + PI * 0.5; theta += PI / 20) {
-
-			mesh.addVertex(last_location + glm::vec3(8 * cos(theta), 8 * sin(theta), 0));
-			frame.push_back(last_location + glm::vec3(8 * cos(theta), 8 * sin(theta), 0));
-		}
-
-		for (int i = index; i < mesh.getNumVertices() - 1; i++) {
-
-			mesh.addIndex(index); mesh.addIndex(i + 0); mesh.addIndex(i + 1);
-		}
-
-		ofSetColor(color_list[(int)ofRandom(color_list.size())]);
-		mesh.draw();
-
-		ofSetColor(255);
-		ofNoFill();
+		ofFill();
+		ofSetColor(0);
 		ofBeginShape();
-		ofVertices(frame);
-		reverse(right.begin(), right.end());
-		ofVertices(right);
-		ofVertices(left);
-		ofEndShape();
+		ofVertices(vertices);
+		ofEndShape(true);
+
+		ofNoFill();
+		ofSetColor(255);
+		ofBeginShape();
+		ofVertices(vertices);
+		ofEndShape(true);
+
+		u += 9;
 	}
+
+	this->cam.end();
 }
+
+//--------------------------------------------------------------
+glm::vec3 ofApp::make_point(float R, float r, float u, float v) {
+
+	// 数学デッサン教室 描いて楽しむ数学たち　P.31
+
+	u *= DEG_TO_RAD;
+	v *= DEG_TO_RAD;
+
+	auto x = (R + r * cos(u)) * cos(v);
+	auto y = (R + r * cos(u)) * sin(v);
+	auto z = r * sin(u);
+
+	return glm::vec3(x, y, z);
+}
+
 
 //--------------------------------------------------------------
 int main() {
